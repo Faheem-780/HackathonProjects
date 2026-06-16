@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics | Snippet Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="bi bi-code-square me-2"></i>
+                <span class="fw-bold">Snippet Library</span>
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Snippets
+                </a>
+                <a href="/explore" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-compass me-1"></i> Explore
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero-section bg-primary text-white py-4">
+        <div class="container">
+            <h1 class="h2 fw-bold mb-1">
+                <i class="bi bi-bar-chart-line"></i> Snippet Analytics
+            </h1>
+            <p class="mb-0 opacity-75">Insights into your code collection</p>
+        </div>
+    </div>
+
+    <div class="container-fluid py-4">
+        <div class="container">
+
+            <!-- Stat Cards -->
+            <div class="row g-4 mb-4" id="statCards">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold text-primary" id="totalSnippets">—</div>
+                            <div class="text-muted mt-1"><i class="bi bi-file-code"></i> Total Snippets</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold text-success" id="totalProjects">—</div>
+                            <div class="text-muted mt-1"><i class="bi bi-folder-fill"></i> Projects</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold text-info" id="totalShared">—</div>
+                            <div class="text-muted mt-1"><i class="bi bi-share-fill"></i> Shared</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center">
+                            <div class="display-5 fw-bold text-warning" id="totalPublic">—</div>
+                            <div class="text-muted mt-1"><i class="bi bi-globe"></i> Public</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-code-slash me-2"></i>Snippets by Language</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="langChart" height="280"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-folder me-2"></i>Snippets by Project</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="projectChart" height="280"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-graph-up me-2"></i>Activity (Last 12 Months)</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="activityChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white border-0 pt-3">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-tags me-2"></i>Top Tags</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="topTagsContainer" class="d-flex flex-wrap gap-2"></div>
+                            <div id="noTagsMsg" class="text-muted text-center py-4 d-none">
+                                <i class="bi bi-tags fs-1 d-block mb-2"></i>
+                                No tags yet. Add tags to your snippets!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p class="mb-0"><i class="bi bi-code-square"></i> Code Snippet Library | Built with <i class="bi bi-heart-fill text-danger"></i> for NextGenHacks 2026</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        const CHART_COLORS = [
+            '#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545',
+            '#fd7e14','#ffc107','#198754','#20c997','#0dcaf0',
+            '#3776ab','#f7df1e','#239120','#e34f26','#ed8b00'
+        ];
+
+        async function loadStats() {
+            const resp = await fetch('/api/stats');
+            if (!resp.ok) { window.location.href = '/login'; return; }
+            const stats = await resp.json();
+
+            document.getElementById('totalSnippets').textContent = stats.total_snippets;
+            document.getElementById('totalProjects').textContent = stats.total_projects;
+            document.getElementById('totalShared').textContent = stats.total_shared;
+            document.getElementById('totalPublic').textContent = stats.total_public;
+
+            // Language chart
+            const langLabels = Object.keys(stats.language_breakdown);
+            const langData = Object.values(stats.language_breakdown);
+            if (langLabels.length > 0) {
+                new Chart(document.getElementById('langChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: langLabels,
+                        datasets: [{ data: langData, backgroundColor: CHART_COLORS, borderWidth: 2 }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'right', labels: { padding: 12, usePointStyle: true } } }
+                    }
+                });
+            } else {
+                document.getElementById('langChart').parentElement.innerHTML =
+                    '<div class="text-muted text-center py-5"><i class="bi bi-pie-chart fs-1 d-block mb-2"></i>No data yet</div>';
+            }
+
+            // Project chart
+            const projLabels = Object.keys(stats.project_breakdown);
+            const projData = Object.values(stats.project_breakdown);
+            if (projLabels.length > 0) {
+                new Chart(document.getElementById('projectChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: projLabels,
+                        datasets: [{
+                            label: 'Snippets',
+                            data: projData,
+                            backgroundColor: CHART_COLORS.slice(0, projLabels.length),
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true, indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            } else {
+                document.getElementById('projectChart').parentElement.innerHTML =
+                    '<div class="text-muted text-center py-5"><i class="bi bi-bar-chart fs-1 d-block mb-2"></i>No data yet</div>';
+            }
+
+            // Activity chart
+            const actLabels = Object.keys(stats.monthly_activity);
+            const actData = Object.values(stats.monthly_activity);
+            new Chart(document.getElementById('activityChart'), {
+                type: 'line',
+                data: {
+                    labels: actLabels,
+                    datasets: [{
+                        label: 'Snippets Created',
+                        data: actData,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13,110,253,0.1)',
+                        fill: true, tension: 0.4, pointRadius: 4,
+                        pointBackgroundColor: '#0d6efd'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+
+            // Top tags
+            const tagsContainer = document.getElementById('topTagsContainer');
+            const noTagsMsg = document.getElementById('noTagsMsg');
+            if (stats.top_tags.length > 0) {
+                const maxCount = stats.top_tags[0]?.count || 1;
+                stats.top_tags.forEach(t => {
+                    const size = 0.75 + (t.count / maxCount) * 0.6;
+                    tagsContainer.innerHTML +=
+                        `<span class="badge bg-primary" style="font-size:${size}rem; padding:0.5em 0.8em">
+                            ${t.tag} <span class="badge bg-white text-primary ms-1">${t.count}</span>
+                        </span>`;
+                });
+            } else {
+                noTagsMsg.classList.remove('d-none');
+            }
+        }
+
+        loadStats();
+    </script>
+</body>
+</html>

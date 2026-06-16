@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Snippet Library | NextGenHacks</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Highlight.js CSS (Atom One Dark theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2">
+</head>
+<body>
+    <!-- ========================================================================
+         Navigation Bar (with Auth UI)
+         ======================================================================== -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="bi bi-code-square me-2"></i>
+                <span class="fw-bold">Snippet Library</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-house-door"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/stats">
+                            <i class="bi bi-bar-chart"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/explore">
+                            <i class="bi bi-compass"></i> Explore
+                        </a>
+                    </li>
+                </ul>
+                <!-- User Info & Actions -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-light me-1">
+                        <i class="bi bi-person-circle"></i>
+                        {{ current_user.display_name or current_user.username }}
+                    </span>
+                    <!-- Edit Profile button -->
+                    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#editProfileModal" title="Edit profile">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <!-- Command Palette trigger -->
+                    <button class="btn btn-outline-light btn-sm" onclick="openCommandPalette()"
+                            title="Command Palette (Ctrl+K)">
+                        <i class="bi bi-search"></i> <kbd class="ms-1" style="font-size:0.7em">Ctrl+K</kbd>
+                    </button>
+                    <!-- Dark mode toggle -->
+                    <button class="btn btn-outline-light btn-sm" id="darkModeToggle"
+                            onclick="toggleDarkMode()" title="Toggle dark mode">
+                        <i class="bi bi-moon-stars"></i>
+                    </button>
+                    <!-- Export dropdown -->
+                    <div class="btn-group">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i> Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="exportSnippets('json')">
+                                <i class="bi bi-filetype-json me-2"></i>Export as JSON</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportSnippets('zip')">
+                                <i class="bi bi-file-zip me-2"></i>Export as ZIP</a></li>
+                        </ul>
+                    </div>
+                    <!-- Gist import -->
+                    <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#gistImportModal" title="Import from GitHub Gist">
+                        <i class="bi bi-github me-1"></i> Import
+                    </button>
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#manageProjectsModal">
+                        <i class="bi bi-folder2 me-1"></i> Projects
+                    </button>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSnippetModal">
+                        <i class="bi bi-plus-circle me-1"></i> Add Snippet
+                    </button>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-box-arrow-right me-1"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========================================================================
+         Hero Section
+         ======================================================================== -->
+    <div class="hero-section bg-primary text-white py-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="h2 fw-bold mb-2">
+                        <i class="bi bi-braces-asterisk"></i> My Code Snippets
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Save, organize into projects, search, and copy your code snippets.
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-2 mt-lg-0">
+                    <span class="badge bg-light text-dark fs-6 px-3 py-2">
+                        <i class="bi bi-trophy"></i> NextGenHacks 2026
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Search and Filter Section
+         ======================================================================== -->
+    <div class="container-fluid py-3 bg-light border-bottom">
+        <div class="container">
+            <div class="row g-3">
+                <!-- Search Bar -->
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="Search snippets...">
+                    </div>
+                </div>
+                <!-- Language Filter -->
+                <div class="col-md-3">
+                    <select id="languageFilter" class="form-select">
+                        <option value="">All Languages</option>
+                        {% for lang in languages %}
+                        <option value="{{ lang }}">{{ lang }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Project Filter -->
+                <div class="col-md-3">
+                    <select id="projectFilter" class="form-select">
+                        <option value="">All Projects</option>
+                        <option value="none">No Project</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" data-color="{{ project.color }}">
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Tag Filter -->
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-tags"></i>
+                        </span>
+                        <input type="text" id="tagFilter" class="form-control" 
+                               placeholder="Filter by tag...">
+                    </div>
+                </div>
+            </div>
+            <!-- Active Filters Display -->
+            <div id="activeFilters" class="mt-2 d-none">
+                <small class="text-muted">Active filters:</small>
+                <span id="filterBadges"></span>
+                <button class="btn btn-link btn-sm p-0 ms-2" onclick="clearAllFilters()">
+                    <i class="bi bi-x-circle"></i> Clear all
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Main Content - Snippet Grid
+         ======================================================================== -->
+    <div class="container-fluid py-4">
+        <div class="container">
+            <!-- Stats Bar -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <h2 class="mb-0">
+                    <i class="bi bi-collection"></i> Code Snippets
+                    <span id="snippetCount" class="badge bg-secondary ms-2">{{ snippets|length }}</span>
+                </h2>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#manageProjectsModal">
+                        <i class="bi bi-folder-plus me-1"></i> Manage Projects
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Snippet Cards Grid -->
+            <div id="snippetsGrid" class="row g-4">
+                {% for snippet in snippets %}
+                <div class="col-lg-4 col-md-6 snippet-col" 
+                     data-language="{{ snippet.language }}" 
+                     data-tags="{{ snippet.tags }}"
+                     data-project-id="{{ snippet.project_id or '' }}">
+                    <div class="card h-100 shadow-sm snippet-card">
+                        <!-- Card Header -->
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span class="badge bg-primary lang-badge">{{ snippet.language }}</span>
+                            <div class="btn-group btn-group-sm">
+                                {% if snippet.language in ['HTML', 'JavaScript', 'CSS'] %}
+                                <button class="btn btn-outline-success run-btn"
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="Run live preview">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                                {% endif %}
+                                {% if ai_enabled %}
+                                <button class="btn btn-outline-warning ai-btn"
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="AI Explain">
+                                    <i class="bi bi-stars"></i>
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-outline-secondary copy-btn" 
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="Copy to clipboard">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <button class="btn btn-outline-info share-btn" 
+                                        data-snippet-id="{{ snippet.id }}"
+                                        data-share-token="{{ snippet.share_token or '' }}"
+                                        title="Share snippet">
+                                    <i class="bi bi-share"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary version-btn"
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="Version history">
+                                    <i class="bi bi-clock-history"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary download-btn"
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="Download file">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary public-btn {% if snippet.is_public %}active-public{% endif %}"
+                                        data-snippet-id="{{ snippet.id }}"
+                                        data-is-public="{{ 'true' if snippet.is_public else 'false' }}"
+                                        title="Toggle public visibility">
+                                    <i class="bi bi-globe{% if not snippet.is_public %}2{% endif %}"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary edit-btn" 
+                                        data-snippet-id="{{ snippet.id }}"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editSnippetModal"
+                                        title="Edit snippet">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger delete-btn" 
+                                        data-snippet-id="{{ snippet.id }}"
+                                        title="Delete snippet">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Body -->
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold">{{ snippet.title }}</h5>
+                            {% if snippet.description %}
+                            <p class="card-text text-muted small">{{ snippet.description }}</p>
+                            {% endif %}
+                            
+                            <!-- Code Block with Syntax Highlighting -->
+                            <div class="code-container">
+                                <pre><code class="language-{{ snippet.language|lower }}">{{ snippet.code_content }}</code></pre>
+                            </div>
+                        </div>
+                        
+                        <!-- Card Footer -->
+                        <div class="card-footer bg-transparent">
+                            <!-- Project badge -->
+                            {% if snippet.project_id %}
+                            <div class="mb-2">
+                                <span class="badge project-badge" 
+                                      style="background-color: {{ snippet.project.color if snippet.project else '#6c757d' }}">
+                                    <i class="bi bi-folder-fill"></i>
+                                    {{ snippet.project.name if snippet.project else 'Unknown' }}
+                                </span>
+                            </div>
+                            {% endif %}
+                            {% if snippet.tags %}
+                            <div class="tags-container">
+                                {% for tag in snippet.tags.split(',') %}
+                                <span class="badge bg-light text-dark me-1 tag-badge clickable-tag" 
+                                      onclick="filterByTag('{{ tag.strip() }}')">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">
+                                <i class="bi bi-clock"></i> 
+                                {{ snippet.created_at.strftime('%Y-%m-%d %H:%M') if snippet.created_at else 'N/A' }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Empty State -->
+            {% if snippets|length == 0 %}
+            <div id="emptyState" class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h3 class="mt-3 text-muted">No Snippets Yet</h3>
+                <p class="text-muted">Start by adding your first code snippet!</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSnippetModal">
+                    <i class="bi bi-plus-circle me-1"></i> Add Your First Snippet
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- No Results State (hidden by default) -->
+            <div id="noResults" class="text-center py-5 d-none">
+                <i class="bi bi-search display-3 text-muted"></i>
+                <h4 class="mt-3 text-muted">No Matching Snippets</h4>
+                <p class="text-muted">Try adjusting your search or filter criteria.</p>
+                <button class="btn btn-outline-secondary" onclick="clearAllFilters()">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Add Snippet Modal
+         ======================================================================== -->
+    <div class="modal fade" id="addSnippetModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle"></i> Add New Snippet
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addSnippetForm">
+                        <div class="mb-3">
+                            <label for="addTitle" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="addTitle" required 
+                                   placeholder="e.g., Python List Comprehension">
+                        </div>
+                        <div class="mb-3">
+                            <label for="addDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="addDescription" rows="2" 
+                                      placeholder="Brief description of what this snippet does..."></textarea>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="addLanguage" class="form-label">Language *</label>
+                                <select class="form-select" id="addLanguage" required>
+                                    <option value="">Select language...</option>
+                                    {% for lang in languages %}
+                                    <option value="{{ lang }}">{{ lang }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="addProject" class="form-label">Project</label>
+                                <select class="form-select" id="addProject">
+                                    <option value="">No Project</option>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="addTags" class="form-label">Tags</label>
+                                <input type="text" class="form-control" id="addTags" 
+                                       placeholder="e.g., api, async (comma-separated)">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="addCode" class="form-label">Code Content *</label>
+                            <textarea class="form-control font-monospace" id="addCode" rows="10" required 
+                                      placeholder="Paste your code here..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addSnippet()">
+                        <i class="bi bi-check-circle"></i> Save Snippet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Edit Snippet Modal
+         ======================================================================== -->
+    <div class="modal fade" id="editSnippetModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil"></i> Edit Snippet
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editSnippetForm">
+                        <input type="hidden" id="editId">
+                        <div class="mb-3">
+                            <label for="editTitle" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="editTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editDescription" rows="2"></textarea>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="editLanguage" class="form-label">Language *</label>
+                                <select class="form-select" id="editLanguage" required>
+                                    {% for lang in languages %}
+                                    <option value="{{ lang }}">{{ lang }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="editProject" class="form-label">Project</label>
+                                <select class="form-select" id="editProject">
+                                    <option value="">No Project</option>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="editTags" class="form-label">Tags</label>
+                                <input type="text" class="form-control" id="editTags">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCode" class="form-label">Code Content *</label>
+                            <textarea class="form-control font-monospace" id="editCode" rows="10" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" onclick="updateSnippet()">
+                        <i class="bi bi-check-circle"></i> Update Snippet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Manage Projects Modal
+         ======================================================================== -->
+    <div class="modal fade" id="manageProjectsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder2"></i> Manage Projects
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Create New Project Form -->
+                    <div class="card mb-4 border-success">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold mb-3">
+                                <i class="bi bi-plus-circle text-success"></i> Create New Project
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <input type="text" id="newProjectName" class="form-control" 
+                                           placeholder="Project name *" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" id="newProjectDesc" class="form-control" 
+                                           placeholder="Description (optional)">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="color" id="newProjectColor" class="form-control form-control-color" 
+                                           value="#0d6efd" title="Pick a color">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-success w-100" onclick="createProject()">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Existing Projects List -->
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-folder2-open"></i> Your Projects
+                        <span id="projectCount" class="badge bg-secondary ms-1">{{ projects|length }}</span>
+                    </h6>
+                    <div id="projectsList">
+                        {% if projects %}
+                            {% for project in projects %}
+                            <div class="card mb-2 project-card" data-project-id="{{ project.id }}">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <span class="project-color-dot me-2" 
+                                                  style="background-color: {{ project.color }}"></span>
+                                            <div>
+                                                <strong>{{ project.name }}</strong>
+                                                {% if project.description %}
+                                                <small class="text-muted d-block">{{ project.description }}</small>
+                                                {% endif %}
+                                                <small class="text-muted">
+                                                    {{ project.snippets|length }} snippet(s)
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary edit-project-btn" 
+                                                    data-project-id="{{ project.id }}"
+                                                    data-project-name="{{ project.name }}"
+                                                    data-project-desc="{{ project.description or '' }}"
+                                                    data-project-color="{{ project.color }}"
+                                                    title="Edit project">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger delete-project-btn" 
+                                                    data-project-id="{{ project.id }}"
+                                                    title="Delete project">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div id="noProjectsMsg" class="text-center py-3 text-muted">
+                                <i class="bi bi-folder2-open fs-4"></i>
+                                <p class="mt-2 mb-0">No projects yet. Create one above!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Edit Project Form (hidden by default) -->
+                    <div id="editProjectForm" class="card mt-3 border-warning d-none">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold mb-3">
+                                <i class="bi bi-pencil text-warning"></i> Edit Project
+                            </h6>
+                            <input type="hidden" id="editProjectId">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <input type="text" id="editProjectName" class="form-control" 
+                                           placeholder="Project name *" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="text" id="editProjectDescInput" class="form-control" 
+                                           placeholder="Description (optional)">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="color" id="editProjectColor" class="form-control form-control-color" 
+                                           value="#0d6efd" title="Pick a color">
+                                </div>
+                                <div class="col-md-1 d-flex gap-1">
+                                    <button class="btn btn-warning btn-sm" onclick="updateProject()">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="cancelEditProject()">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Command Palette Modal (Ctrl+K)
+         ======================================================================== -->
+    <div class="modal fade" id="commandPaletteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content command-palette-content">
+                <div class="modal-body p-0">
+                    <div class="input-group border-bottom">
+                        <span class="input-group-text bg-transparent border-0">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+                        <input type="text" id="commandPaletteInput" class="form-control border-0 py-3"
+                               placeholder="Search snippets, actions... (type to filter)"
+                               autocomplete="off" autofocus>
+                        <span class="input-group-text bg-transparent border-0">
+                            <kbd>ESC</kbd>
+                        </span>
+                    </div>
+                    <div id="commandPaletteResults" class="command-palette-results">
+                        <!-- Actions -->
+                        <div class="px-3 py-2 text-muted small fw-bold text-uppercase">Actions</div>
+                        <div class="command-item" onclick="document.getElementById('commandPaletteModal').classList.remove('show');document.querySelector('[data-bs-target=\'#addSnippetModal\']').click();">
+                            <i class="bi bi-plus-circle me-2 text-primary"></i> Add New Snippet
+                        </div>
+                        <div class="command-item" onclick="window.location='/stats';">
+                            <i class="bi bi-bar-chart me-2 text-success"></i> Open Analytics Dashboard
+                        </div>
+                        <div class="command-item" onclick="window.location='/explore';">
+                            <i class="bi bi-compass me-2 text-info"></i> Explore Public Snippets
+                        </div>
+                        <div class="command-item" onclick="exportSnippets('json');document.getElementById('commandPaletteModal').classList.remove('show');">
+                            <i class="bi bi-download me-2 text-warning"></i> Export All as JSON
+                        </div>
+                        <div class="command-item" onclick="exportSnippets('zip');document.getElementById('commandPaletteModal').classList.remove('show');">
+                            <i class="bi bi-file-zip me-2 text-secondary"></i> Export All as ZIP
+                        </div>
+                        <div class="command-item" onclick="toggleDarkMode();document.getElementById('commandPaletteModal').classList.remove('show');">
+                            <i class="bi bi-moon-stars me-2 text-secondary"></i> Toggle Dark Mode
+                        </div>
+                        <!-- Snippet results populated dynamically -->
+                        <div id="commandSnippetResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         AI Explain Modal
+         ======================================================================== -->
+    <div class="modal fade" id="aiExplainModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="bi bi-stars me-2"></i> AI Code Explanation
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="aiLoading" class="text-center py-4">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Analyzing...</span>
+                        </div>
+                        <p class="mt-2 text-muted">AI is analyzing your code...</p>
+                    </div>
+                    <div id="aiResult" class="d-none">
+                        <div class="alert alert-light border">
+                            <h6 class="fw-bold text-warning mb-2">
+                                <i class="bi bi-lightbulb me-1"></i> Explanation
+                            </h6>
+                            <p id="aiExplanation" class="mb-0"></p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="fw-bold small text-muted mb-2">
+                                <i class="bi bi-speedometer2 me-1"></i> Complexity
+                            </h6>
+                            <span id="aiComplexity" class="badge bg-secondary"></span>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold small text-muted mb-2">
+                                <i class="bi bi-tags me-1"></i> Suggested Tags
+                            </h6>
+                            <div id="aiSuggestedTags" class="d-flex flex-wrap gap-1"></div>
+                        </div>
+                    </div>
+                    <div id="aiError" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="aiApplyTagsBtn"
+                            onclick="applyAiTags()" style="display:none">
+                        <i class="bi bi-check me-1"></i> Apply Suggested Tags
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Version History Modal
+         ======================================================================== -->
+    <div class="modal fade" id="versionHistoryModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-clock-history me-2"></i> Version History
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="versionLoading" class="text-center py-4">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                        <p class="mt-2 text-muted">Loading versions...</p>
+                    </div>
+                    <div id="versionList" class="d-none">
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Each time you edit a snippet, the previous version is saved here.
+                        </p>
+                        <div id="versionItems"></div>
+                    </div>
+                    <div id="versionEmpty" class="text-center py-4 d-none">
+                        <i class="bi bi-clock-history fs-1 text-muted"></i>
+                        <p class="mt-2 text-muted">No versions yet. Edit this snippet to create a version!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Live Preview Modal (for HTML/CSS/JS)
+         ======================================================================== -->
+    <div class="modal fade" id="livePreviewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-play-circle me-2"></i> Live Preview
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="livePreviewFrame" class="live-preview-frame"
+                            sandbox="allow-scripts" style="width:100%;height:500px;border:none"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Gist Import Modal
+         ======================================================================== -->
+    <div class="modal fade" id="gistImportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-github me-2"></i> Import from GitHub Gist
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Paste a GitHub Gist URL to import all its files as snippets.
+                        The Gist must be public.
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark text-white">
+                            <i class="bi bi-link-45deg"></i>
+                        </span>
+                        <input type="url" class="form-control" id="gistUrlInput"
+                               placeholder="https://gist.github.com/user/gist_id">
+                    </div>
+                    <div id="gistImportStatus" class="mt-3 d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-dark" onclick="importGist()" id="gistImportBtn">
+                        <i class="bi bi-download me-1"></i> Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Edit Profile Modal
+         ======================================================================== -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editProfileModalLabel">
+                        <i class="bi bi-person-gear me-2"></i>Edit Profile
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="profileForm" onsubmit="saveProfile(event)">
+                        <div class="mb-3">
+                            <label for="profileDisplayName" class="form-label">Display Name</label>
+                            <input type="text" class="form-control" id="profileDisplayName"
+                                   placeholder="Your display name" maxlength="100">
+                        </div>
+                        <div class="mb-3">
+                            <label for="profileEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="profileEmail"
+                                   placeholder="your@email.com" maxlength="120">
+                        </div>
+                        <div class="mb-3">
+                            <label for="profileOccupation" class="form-label">Occupation</label>
+                            <input type="text" class="form-control" id="profileOccupation"
+                                   placeholder="e.g. Software Engineer, Student, Designer" maxlength="100">
+                        </div>
+                        <div class="mb-3">
+                            <label for="profileLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="profileLocation"
+                                   placeholder="e.g. New York, USA" maxlength="100">
+                            <div class="form-text"><i class="bi bi-geo-alt"></i> City, country, or region</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="profileBio" class="form-label">Bio</label>
+                            <textarea class="form-control" id="profileBio" rows="3"
+                                      placeholder="Tell us a bit about yourself..." maxlength="500"></textarea>
+                            <div class="form-text"><span id="bioCharCount">0</span>/500 characters</div>
+                        </div>
+                        <div id="profileFormMessage" class="alert d-none mb-0"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProfile(event)">
+                        <i class="bi bi-check-circle me-1"></i>Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Toast Notification
+         ======================================================================== -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage"></div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         Footer
+         ======================================================================== -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">
+                <i class="bi bi-code-square"></i> Code Snippet Library | 
+                Built with <i class="bi bi-heart-fill text-danger"></i> for NextGenHacks 2026
+            </p>
+        </div>
+    </footer>
+
+    <!-- ========================================================================
+         Scripts
+         ======================================================================== -->
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+    
+    <!-- Initialize Highlight.js -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            hljs.highlightAll();
+        });
+    </script>
+</body>
+</html>

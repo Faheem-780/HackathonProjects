@@ -1,0 +1,26 @@
+# Collaborative Code Snippet Library - Python Dependencies
+# NextGenHacks Hackathon Project
+
+# Flask - Lightweight web framework
+Flask==3.0.0
+
+# Flask-SQLAlchemy - SQLAlchemy integration for Flask
+Flask-SQLAlchemy==3.1.1
+
+# SQLAlchemy - Database ORM
+SQLAlchemy==2.0.23
+
+# Flask-Login - User session management
+Flask-Login==0.6.3
+
+# Flask-Bcrypt - Password hashing
+Flask-Bcrypt==1.0.1
+
+# openai - AI-powered snippet explanation (works with Groq free tier)
+openai==1.58.1
+
+# requests - HTTP client for GitHub Gist API
+requests==2.32.3
+
+# python-dotenv - Load environment variables from .env file
+python-dotenv==1.0.1

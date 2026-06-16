@@ -1,0 +1,12 @@
+/*
+ * Snippet Library content script styles
+ * Highlights code blocks when double-clicked for easy capture.
+ */
+
+.snippetlib-highlight {
+    outline: 3px solid #0d6efd !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 6px rgba(13, 110, 253, 0.15) !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease !important;
+}

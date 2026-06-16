@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { width: 320px; font-family: 'Segoe UI', sans-serif; background: #f8f9fa; }
+        .header { background: #212529; color: white; padding: 14px 16px; }
+        .header h1 { font-size: 15px; font-weight: 700; }
+        .header p { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+        .content { padding: 14px 16px; }
+        .status { text-align: center; padding: 10px; margin-bottom: 12px; border-radius: 6px; font-size: 12px; }
+        .status.connected { background: #d1e7dd; color: #0f5132; }
+        .status.disconnected { background: #f8d7da; color: #842029; }
+        label { font-size: 11px; font-weight: 600; color: #495057; display: block; margin-bottom: 4px; }
+        input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; margin-bottom: 10px; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.1); }
+        textarea { resize: vertical; font-family: 'Consolas', monospace; font-size: 11px; min-height: 80px; }
+        button { width: 100%; padding: 10px; background: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        button:hover { background: #0b5ed7; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        .server-config { margin-bottom: 12px; }
+        .msg { padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 8px; display: none; }
+        .msg.success { display: block; background: #d1e7dd; color: #0f5132; }
+        .msg.error { display: block; background: #f8d7da; color: #842029; }
+        .footer { padding: 10px 16px; text-align: center; font-size: 11px; color: #6c757d; border-top: 1px solid #dee2e6; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>&#128187; Snippet Library</h1>
+        <p>Save code from any page to your library</p>
+    </div>
+    <div class="content">
+        <div id="serverStatus" class="status disconnected">Checking server...</div>
+
+        <div class="server-config">
+            <label>Server URL</label>
+            <input type="url" id="serverUrl" value="http://127.0.0.1:5000" placeholder="http://127.0.0.1:5000">
+        </div>
+
+        <label>Snippet Title</label>
+        <input type="text" id="snippetTitle" placeholder="My code snippet">
+
+        <label>Language</label>
+        <select id="snippetLang">
+            <option value="JavaScript">JavaScript</option>
+            <option value="Python">Python</option>
+            <option value="HTML">HTML</option>
+            <option value="CSS">CSS</option>
+            <option value="TypeScript">TypeScript</option>
+            <option value="Java">Java</option>
+            <option value="C++">C++</option>
+            <option value="C#">C#</option>
+            <option value="Go">Go</option>
+            <option value="Rust">Rust</option>
+            <option value="Other">Other</option>
+        </select>
+
+        <label>Code</label>
+        <textarea id="snippetCode" placeholder="// Paste or select code here..."></textarea>
+
+        <button id="saveBtn" onclick="saveSnippet()">Save to Library</button>
+        <div id="resultMsg" class="msg"></div>
+    </div>
+    <div class="footer">NextGenHacks 2026</div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
