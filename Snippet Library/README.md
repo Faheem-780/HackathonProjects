@@ -96,48 +96,6 @@ snippet-library/
 
 ---
 
-## 🎬 2-Minute Demo Script
-
-> Follow this script to record a quick demo video for the hackathon presentation.
-
-### Scene 1: Sign Up (0:00 – 0:15)
-1. Open **http://127.0.0.1:5000** in your browser
-2. Click **"Create one"** → fill in: username, email, password
-3. Show the dashboard with the empty state message
-
-### Scene 2: Create a Project (0:15 – 0:30)
-1. Click **"Projects"** in the navbar
-2. Create a project: name = "Hackathon App", pick a color
-3. Show the project appearing in the project list
-
-### Scene 3: Add Snippets (0:30 – 1:00)
-1. Click **"Add Snippet"**
-2. Title: "API Route", Language: Python, Project: "Hackathon App"
-3. Paste a Flask route as the code
-4. Click Save → show the snippet card with the project badge
-5. Add a second snippet in a different language (JavaScript fetch example)
-
-### Scene 4: Search & Filter (1:00 – 1:20)
-1. Type in the search bar → show instant filtering
-2. Select a language from the dropdown → show language filter
-3. Select the project from the project filter → show project filter
-4. Click **"Clear all"** to reset
-
-### Scene 5: Copy & Share (1:20 – 1:50)
-1. Click the **clipboard icon** on a snippet → show "copied" feedback
-2. Click the **share icon** → show the share dialog with the URL
-3. Click **"Copy"** to copy the link
-4. Open the link in an **incognito window** → show the beautiful public view
-5. Click **copy** on the public page → show it works without login
-
-### Scene 6: Revoke & Outro (1:50 – 2:00)
-1. Go back to the dashboard, click share icon again
-2. Click **"Revoke Link"** → show confirmation
-3. Try the old link → show 404 page
-4. Close with: *"Personal code vault with one-click copy and shareable links — built in Flask for NextGenHacks!"*
-
----
-
 ## 🔒 Security
 
 - Passwords are hashed with **bcrypt** (never stored in plain text)
