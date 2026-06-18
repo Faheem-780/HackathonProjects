@@ -24,3 +24,6 @@ requests==2.32.3
 
 # python-dotenv - Load environment variables from .env file
 python-dotenv==1.0.1
+
+# gunicorn - Production WSGI server (used on Render/Railway deployment)
+gunicorn==23.0.0

@@ -5,7 +5,7 @@ Includes user authentication (signup/login), project management, and per-account
 Built for NextGenHacks hackathon.
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, Response, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, Response, send_file, session, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from models import db, Snippet, User, Project, SnippetVersion
@@ -13,8 +13,12 @@ import os
 import io
 import json
 import zipfile
+import secrets
+import time
 import requests as http_requests
 from datetime import datetime
+from functools import wraps
+from urllib.parse import urlparse
 
 # Load environment variables from .env file (optional)
 try:
@@ -54,13 +58,17 @@ except ImportError:
 # App Configuration
 # ============================================================================
 
-app = Flask(__name__, static_folder='../static')
+app = Flask(__name__)
 
 # Database configuration (SQLite local database)
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'snippets.db')
+# Use Render persistent disk (/data) when available, fallback to local directory
+data_dir = os.environ.get('RENDER_DISK_PATH', basedir)
+os.makedirs(data_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(data_dir, 'snippets.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'nextgenhacks-snippet-library-2026'
+# Use env var for secret key; generate a secure random one as fallback
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 # Initialize extensions
 db.init_app(app)
@@ -69,6 +77,81 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access your snippets.'
 login_manager.login_message_category = 'info'
+
+
+# ============================================================================
+# CSRF Protection Helpers
+# ============================================================================
+
+def generate_csrf_token():
+    """Generate a CSRF token and store it in the session."""
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+
+def validate_csrf_token():
+    """Validate the CSRF token from request headers or form data."""
+    token = (
+        request.headers.get('X-CSRFToken')
+        or request.headers.get('X-CSRF-Token')
+        or request.form.get('csrf_token')
+    )
+    if not token or token != session.get('csrf_token'):
+        abort(403)
+
+
+def csrf_protect(f):
+    """Decorator to protect a route from CSRF attacks."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+            validate_csrf_token()
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ============================================================================
+# Simple In-Memory Rate Limiter
+# ============================================================================
+
+_rate_limit_store = {}  # key -> list of timestamps
+
+def rate_limit(max_requests, window_seconds):
+    """
+    Decorator that limits requests per IP address.
+    Usage: @rate_limit(max_requests=5, window_seconds=60) → 5 requests per minute
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            key = f"{f.__name__}:{request.remote_addr}"
+            now = time.time()
+            # Clean old entries
+            _rate_limit_store.setdefault(key, [])
+            _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < window_seconds]
+            if len(_rate_limit_store[key]) >= max_requests:
+                return jsonify({'error': 'Too many requests. Please slow down.'}), 429
+            _rate_limit_store[key].append(now)
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+
+# Inject CSRF token into all rendered templates
+@app.context_processor
+def inject_csrf():
+    return {'csrf_token': generate_csrf_token()}
+
+
+# Global CSRF check on all state-changing requests (skip login/signup — no session yet)
+@app.before_request
+def csrf_protect_global():
+    if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+        # Skip CSRF for routes that don't have a session yet
+        if request.endpoint in ('login', 'signup', 'static'):
+            return
+        validate_csrf_token()
 
 
 @login_manager.user_loader
@@ -149,6 +232,7 @@ def signup():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@rate_limit(max_requests=10, window_seconds=60)  # 10 login attempts per minute
 def login():
     """
     User login page.
@@ -176,7 +260,13 @@ def login():
             flash(f'Welcome back, {user.display_name}!', 'success')
 
             # Redirect to the page the user was trying to access, or index
+            # Validate next_page to prevent open redirect attacks
             next_page = request.args.get('next')
+            if next_page:
+                parsed = urlparse(next_page)
+                # Only allow relative redirects (same origin)
+                if parsed.netloc and parsed.netloc != request.host:
+                    next_page = None
             return redirect(next_page or url_for('index'))
         else:
             flash('Invalid username/email or password.', 'danger')
@@ -581,6 +671,7 @@ def unshare_snippet(snippet_id):
 
 @app.route('/api/snippets/<int:snippet_id>/explain', methods=['POST'])
 @login_required
+@rate_limit(max_requests=15, window_seconds=60)  # 15 AI requests per minute
 def explain_snippet(snippet_id):
     """
     AI-powered code explanation. Returns a plain-English summary of what the code does,
@@ -921,10 +1012,23 @@ def import_gist():
 
 @app.after_request
 def add_cors_for_extension(response):
-    """Allow the browser extension to communicate with the local server."""
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    """Allow the browser extension to communicate with the local server.
+    Restricts CORS to same-origin and Chrome extension contexts only.
+    Also adds security headers."""
+    origin = request.headers.get('Origin', '')
+    # Allow same-origin requests and Chrome extension requests
+    if origin.startswith('chrome-extension://') or origin == request.host_url.rstrip('/'):
+        response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Cookie'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-CSRFToken, Cookie'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
     return response
 
 
@@ -937,7 +1041,7 @@ def init_db():
     If the schema is outdated (missing columns/tables), drops and recreates."""
     with app.app_context():
         import sqlite3
-        db_path = os.path.join(basedir, 'snippets.db')
+        db_path = os.path.join(data_dir, 'snippets.db')
         needs_rebuild = False
 
         # Check if existing DB has the correct schema

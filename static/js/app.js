@@ -13,6 +13,29 @@ const PROJECT_API = '/api/projects';
 let currentEditId = null;
 let editingProjectId = null;
 
+// CSRF token — read from the meta tag or hidden input injected by Flask
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.getAttribute('content');
+    const input = document.querySelector('input[name="csrf_token"]');
+    if (input) return input.value;
+    return '';
+}
+
+// Wrap all fetch calls with CSRF header
+const _originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+    options.headers = options.headers || {};
+    if (!(options.headers instanceof Headers)) {
+        options.headers = new Headers(options.headers);
+    }
+    const method = (options.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+        options.headers.set('X-CSRFToken', getCsrfToken());
+    }
+    return _originalFetch.call(this, url, options);
+};
+
 // ============================================================================
 // DOM Ready - Initialize Event Listeners
 // ============================================================================
